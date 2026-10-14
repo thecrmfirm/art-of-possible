@@ -1,0 +1,860 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Voltra Grid Operations — Substation 7</title>
+<style>
+/* ── Tokens ─────────────────────────────────────────────────────────── */
+:root {
+  color-scheme: light;
+  --plane:          #f9f9f7;
+  --surface-1:      #fcfcfb;
+  --surface-2:      #f3f2ee;
+  --text-primary:   #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted:     #898781;
+  --grid:           #e1e0d9;
+  --axis:           #c3c2b7;
+  --hairline:       rgba(11,11,11,0.10);
+  --hairline-soft:  rgba(11,11,11,0.05);
+
+  --series-1: #2a78d6;  /* grid import / actual */
+  --series-2: #eb6834;  /* solar / forecast     */
+  --series-3: #1baf7a;  /* battery              */
+  --series-4: #eda100;  /* diesel standby       */
+
+  --ramp-100: #cde2fb;
+  --ramp-250: #86b6ef;
+
+  --good:     #0ca30c;
+  --warning:  #fab219;
+  --serious:  #ec835a;
+  --critical: #d03b3b;
+  --delta-up-good: #006300;
+
+  --shadow: 0 1px 2px rgba(11,11,11,.04), 0 8px 24px -12px rgba(11,11,11,.10);
+  --radius: 12px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --plane:          #0d0d0d;
+    --surface-1:      #1a1a19;
+    --surface-2:      #222221;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #898781;
+    --grid:           #2c2c2a;
+    --axis:           #383835;
+    --hairline:       rgba(255,255,255,0.10);
+    --hairline-soft:  rgba(255,255,255,0.06);
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+    --ramp-100: #0d366b;
+    --ramp-250: #184f95;
+    --delta-up-good: #0ca30c;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --plane:          #0d0d0d;
+  --surface-1:      #1a1a19;
+  --surface-2:      #222221;
+  --text-primary:   #ffffff;
+  --text-secondary: #c3c2b7;
+  --text-muted:     #898781;
+  --grid:           #2c2c2a;
+  --axis:           #383835;
+  --hairline:       rgba(255,255,255,0.10);
+  --hairline-soft:  rgba(255,255,255,0.06);
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --ramp-100: #0d366b;
+  --ramp-250: #184f95;
+  --delta-up-good: #0ca30c;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+}
+
+/* ── Base ───────────────────────────────────────────────────────────── */
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background-color: var(--plane);
+  background-image:
+    linear-gradient(var(--hairline-soft) 1px, transparent 1px),
+    linear-gradient(90deg, var(--hairline-soft) 1px, transparent 1px);
+  background-size: 88px 88px, 88px 88px;
+  background-position: -1px -1px;
+}
+.shell { max-width: 1320px; margin: 0 auto; padding: 0 20px 56px; }
+h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.012em; }
+p { margin: 0; }
+.eyebrow {
+  font-size: 10.5px; font-weight: 600; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--text-muted);
+}
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ── Masthead ───────────────────────────────────────────────────────── */
+.masthead {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding-block: 22px 18px;
+  border-bottom: 1px solid var(--hairline);
+}
+.brand { display: flex; align-items: center; gap: 11px; margin-right: auto; }
+.brand-mark {
+  width: 34px; height: 34px; border-radius: 9px; flex: none;
+  background: var(--series-1); display: grid; place-items: center;
+}
+.brand-name { font-size: 15px; font-weight: 600; letter-spacing: 0.02em; }
+.brand-sub { font-size: 11.5px; color: var(--text-muted); }
+.pill {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 5px 11px 5px 9px; border-radius: 999px;
+  border: 1px solid var(--hairline); background: var(--surface-1);
+  font-size: 11.5px; font-weight: 500; color: var(--text-secondary);
+}
+.dot-live { width: 7px; height: 7px; border-radius: 50%; background: var(--good); }
+@media (prefers-reduced-motion: no-preference) {
+  .dot-live { animation: pulse 2.4s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+}
+.btn {
+  font: inherit; font-size: 12px; font-weight: 500; color: var(--text-secondary);
+  background: var(--surface-1); border: 1px solid var(--hairline);
+  border-radius: 8px; padding: 6px 12px; cursor: pointer;
+}
+.btn:hover { background: var(--surface-2); color: var(--text-primary); }
+.btn:focus-visible { outline: 2px solid var(--series-1); outline-offset: 2px; }
+
+/* ── Filter row (one row, scopes everything below) ──────────────────── */
+.filters { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-block: 16px; }
+.segmented { display: flex; background: var(--surface-2); border-radius: 9px; padding: 3px; gap: 2px; }
+.segmented button {
+  font: inherit; font-size: 12px; font-weight: 500; color: var(--text-secondary);
+  background: none; border: 0; border-radius: 7px; padding: 5px 12px; cursor: pointer;
+}
+.segmented button[aria-pressed="true"] { background: var(--surface-1); color: var(--text-primary); box-shadow: var(--shadow); }
+.segmented button:focus-visible { outline: 2px solid var(--series-1); outline-offset: 1px; }
+.combo {
+  font: inherit; font-size: 12px; color: var(--text-secondary);
+  background: var(--surface-1); border: 1px solid var(--hairline);
+  border-radius: 8px; padding: 6px 10px;
+}
+.filters .spacer { margin-left: auto; }
+.stamp { font-size: 11.5px; color: var(--text-muted); }
+
+/* ── Grid ───────────────────────────────────────────────────────────── */
+.grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
+.c3 { grid-column: span 3; } .c4 { grid-column: span 4; }
+.c5 { grid-column: span 5; } .c7 { grid-column: span 7; }
+.c8 { grid-column: span 8; } .c12 { grid-column: span 12; }
+@media (max-width: 1080px) { .c7, .c8, .c5, .c4 { grid-column: span 12; } .c3 { grid-column: span 6; } }
+@media (max-width: 620px)  { .c3 { grid-column: span 12; } }
+
+.card {
+  background: var(--surface-1);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  padding: 18px; margin: 0;
+  box-shadow: var(--shadow);
+  min-width: 0;
+}
+.card-head { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 4px; }
+.card-head h3 { font-size: 14.5px; }
+.card-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+/* ── Hero ───────────────────────────────────────────────────────────── */
+.hero { position: relative; padding: 26px 24px; }
+.hero::before, .hero::after {
+  content: ""; position: absolute; width: 14px; height: 14px; pointer-events: none;
+  border-color: var(--axis); border-style: solid;
+}
+.hero::before { top: 10px; left: 10px; border-width: 1px 0 0 1px; }
+.hero::after  { bottom: 10px; right: 10px; border-width: 0 1px 1px 0; }
+.hero { display: flex; flex-direction: column; }
+.hero-rule { width: 30px; height: 3px; border-radius: 2px; background: var(--series-1); margin-bottom: 12px; }
+.hero-fig { font-size: 60px; line-height: 1; font-weight: 600; letter-spacing: -0.03em; margin-top: 6px; }
+.hero-fig span { font-size: 22px; font-weight: 500; color: var(--text-secondary); letter-spacing: 0; margin-left: 6px; }
+.hero-meta {
+  display: flex; gap: 28px; flex-wrap: wrap;
+  margin-top: auto; padding-top: 20px; border-top: 1px solid var(--hairline);
+}
+.hero-meta div { min-width: 92px; }
+.hero-meta .v { font-size: 17px; font-weight: 600; margin-top: 3px; }
+
+/* ── Stat tiles ─────────────────────────────────────────────────────── */
+.tile .value { font-size: 30px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.15; margin-top: 8px; }
+.tile .value small { font-size: 14px; font-weight: 500; color: var(--text-secondary); margin-left: 3px; }
+.tile .foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-top: 10px; }
+.delta { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; flex-wrap: wrap; }
+.delta.up   { color: var(--delta-up-good); }
+.delta.down { color: var(--critical); }
+.delta.flat { color: var(--text-muted); }
+.delta .vs { font-weight: 400; color: var(--text-muted); }
+.spark { width: 92px; height: 30px; flex: none; }
+
+/* ── Charts ─────────────────────────────────────────────────────────── */
+.legend { display: flex; flex-wrap: wrap; gap: 14px; margin: 12px 0 2px; }
+.legend-item { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); }
+.swatch { width: 12px; height: 3px; border-radius: 2px; flex: none; display: inline-block; }
+.swatch.sq { width: 10px; height: 10px; border-radius: 3px; }
+.chart-wrap { position: relative; margin-top: 6px; }
+.chart-wrap svg { display: block; width: 100%; height: auto; overflow: visible; }
+/* charts keep a legibility floor and scroll sideways rather than shrink into unreadable type */
+.chart-scroll { overflow-x: auto; padding-bottom: 2px; }
+.hit:focus-visible { outline: 2px solid var(--series-1); outline-offset: 2px; }
+.tip {
+  position: absolute; pointer-events: none; z-index: 5;
+  background: var(--surface-1); border: 1px solid var(--hairline);
+  border-radius: 9px; padding: 9px 11px; box-shadow: var(--shadow);
+  font-size: 12px; min-width: 132px; transform: translate(-50%, -100%);
+}
+.tip.below { transform: translate(-50%, 0); }
+.tip[hidden] { display: none; }
+.tip .tt { font-weight: 600; font-size: 11.5px; margin-bottom: 6px; color: var(--text-primary); }
+.tip .tr { display: flex; align-items: center; gap: 10px; justify-content: space-between; margin-top: 3px; color: var(--text-secondary); }
+.tip .tr .n { display: inline-flex; align-items: center; gap: 6px; }
+.tip .tr .val { font-weight: 600; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+
+details.tv { margin-top: 14px; border-top: 1px solid var(--hairline); padding-top: 10px; }
+details.tv summary {
+  cursor: pointer; font-size: 11.5px; font-weight: 500; color: var(--text-muted);
+  list-style: none; display: inline-flex; align-items: center; gap: 6px;
+}
+details.tv summary::-webkit-details-marker { display: none; }
+details.tv summary::before { content: "\25B8"; font-size: 9px; }
+details.tv[open] summary::before { content: "\25BE"; }
+details.tv summary:hover { color: var(--text-primary); }
+.tv-scroll { overflow-x: auto; margin-top: 10px; }
+table { border-collapse: collapse; width: 100%; font-size: 12px; }
+th, td { text-align: right; padding: 6px 10px; border-bottom: 1px solid var(--hairline-soft); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+thead th { font-weight: 600; color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+tbody td { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+
+/* ── Meters ─────────────────────────────────────────────────────────── */
+.meter + .meter { margin-top: 18px; }
+.meter-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.meter-name { font-size: 13px; font-weight: 500; }
+.meter-val { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.track { height: 10px; border-radius: 5px; background: var(--ramp-100); margin-top: 8px; overflow: hidden; }
+.fill { height: 100%; border-radius: 5px; background: var(--series-1); }
+.fill.warn { background: var(--warning); }
+.fill.crit { background: var(--critical); }
+.meter-foot { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-top: 5px; }
+
+/* ── Status chips ───────────────────────────────────────────────────── */
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+.chip svg { flex: none; }
+.chip.good { color: var(--delta-up-good); }
+.chip.warning, .chip.serious { color: var(--text-primary); }
+.chip.warning svg { color: var(--warning); }
+.chip.serious svg { color: var(--serious); }
+.chip.critical { color: var(--critical); }
+td .chip { justify-content: flex-end; width: 100%; }
+
+/* ── One-line diagram ───────────────────────────────────────────────── */
+.sld { margin-top: 10px; overflow-x: auto; }
+.sld svg { display: block; min-width: 680px; width: 100%; height: auto; }
+
+footer.foot {
+  margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--hairline);
+  display: flex; gap: 14px; flex-wrap: wrap; justify-content: space-between;
+  font-size: 11.5px; color: var(--text-muted);
+}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <header class="masthead">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/></svg>
+      </div>
+      <div>
+        <div class="brand-name">VOLTRA&thinsp;/&thinsp;Grid Operations</div>
+        <div class="brand-sub">Substation 7 — Northfield 138&thinsp;/&thinsp;13.8&nbsp;kV</div>
+      </div>
+    </div>
+    <span class="pill"><span class="dot-live" aria-hidden="true"></span> SCADA live · 2&nbsp;s poll</span>
+    <button class="btn" id="themeToggle" type="button">Dark mode</button>
+  </header>
+
+  <div class="filters" role="group" aria-label="Dashboard filters">
+    <div class="segmented" role="group" aria-label="Time range">
+      <button type="button" aria-pressed="false">6h</button>
+      <button type="button" aria-pressed="true">24h</button>
+      <button type="button" aria-pressed="false">7d</button>
+      <button type="button" aria-pressed="false">30d</button>
+    </div>
+    <select class="combo" aria-label="Bus"><option>All buses</option><option>Bus A — 13.8 kV</option><option>Bus B — 13.8 kV</option></select>
+    <select class="combo" aria-label="Feeder"><option>All feeders (6)</option><option>F-101 Northfield</option><option>F-104 Harbor Industrial</option><option>F-115 Lakeside</option></select>
+    <span class="spacer"></span>
+    <span class="stamp">Updated 14 Oct 2026, 15:42:06 UTC</span>
+  </div>
+
+  <div class="grid">
+
+    <!-- Hero -->
+    <section class="card hero c8">
+      <div class="hero-rule" aria-hidden="true"></div>
+      <p class="eyebrow">Peak demand · today</p>
+      <div class="hero-fig">52.6<span>MW</span></div>
+      <p class="delta down" style="margin-top:12px">
+        <svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true"><path d="M6 1 11 8H1z"/></svg>
+        +3.1% <span class="vs">vs. yesterday’s peak — 1.6 MW above day-ahead plan</span>
+      </p>
+      <div class="hero-meta">
+        <div><p class="eyebrow">Now</p><p class="v">48.6 MW</p></div>
+        <div><p class="eyebrow">Headroom</p><p class="v">11.4 MW</p></div>
+        <div><p class="eyebrow">Peak at</p><p class="v">18:00</p></div>
+        <div><p class="eyebrow">Open alarms</p><p class="v">3</p></div>
+        <div><p class="eyebrow">Load factor</p><p class="v">0.79</p></div>
+      </div>
+    </section>
+
+    <section class="card c4">
+      <div class="card-head"><div><h3>Transformer &amp; storage loading</h3><p class="card-sub">Percent of nameplate rating</p></div></div>
+      <div id="meters" style="margin-top:14px"></div>
+    </section>
+
+    <!-- Stat tiles -->
+    <section class="card tile c3" id="tile-voltage"></section>
+    <section class="card tile c3" id="tile-pf"></section>
+    <section class="card tile c3" id="tile-freq"></section>
+    <section class="card tile c3" id="tile-thd"></section>
+
+    <!-- Load vs forecast -->
+    <figure class="card c8">
+      <figcaption class="card-head">
+        <div>
+          <p class="eyebrow">Demand</p>
+          <h3>Bus load vs. day-ahead forecast</h3>
+          <p class="card-sub">Megawatts, hourly average · 00:00–23:00 local</p>
+        </div>
+      </figcaption>
+      <div class="legend" id="lg-load"></div>
+      <div class="chart-wrap"><div class="chart-scroll"><div id="c-load"></div></div><div class="tip" hidden></div></div>
+      <details class="tv"><summary>Table view</summary><div class="tv-scroll" id="t-load"></div></details>
+    </figure>
+
+    <!-- Harmonics -->
+    <figure class="card c4">
+      <figcaption class="card-head">
+        <div>
+          <p class="eyebrow">Power quality</p>
+          <h3>Harmonic spectrum</h3>
+          <p class="card-sub">Individual harmonic voltage, % of fundamental</p>
+        </div>
+      </figcaption>
+      <div class="legend" id="lg-harm"></div>
+      <div class="chart-wrap"><div class="chart-scroll"><div id="c-harm"></div></div><div class="tip" hidden></div></div>
+      <details class="tv"><summary>Table view</summary><div class="tv-scroll" id="t-harm"></div></details>
+    </figure>
+
+    <!-- Generation mix -->
+    <figure class="card c7">
+      <figcaption class="card-head">
+        <div>
+          <p class="eyebrow">Supply</p>
+          <h3>Energy served by source</h3>
+          <p class="card-sub">Megawatt-hours per 4-hour block</p>
+        </div>
+      </figcaption>
+      <div class="legend" id="lg-mix"></div>
+      <div class="chart-wrap"><div class="chart-scroll"><div id="c-mix"></div></div><div class="tip" hidden></div></div>
+      <details class="tv"><summary>Table view</summary><div class="tv-scroll" id="t-mix"></div></details>
+    </figure>
+
+    <!-- Alarms -->
+    <section class="card c5">
+      <div class="card-head"><div><h3>Active alarms</h3><p class="card-sub">Acknowledged events suppressed</p></div></div>
+      <div id="alarms" style="margin-top:12px"></div>
+    </section>
+
+    <!-- Single-line diagram -->
+    <section class="card c12">
+      <div class="card-head">
+        <div>
+          <p class="eyebrow">Topology</p>
+          <h3>Single-line diagram — Bus A</h3>
+          <p class="card-sub">Breaker states and live feeder loading. Every status carries a label, never colour alone.</p>
+        </div>
+      </div>
+      <div class="sld" id="sld"></div>
+    </section>
+
+    <!-- Feeder table -->
+    <section class="card c12">
+      <div class="card-head"><div><h3>Feeder health</h3><p class="card-sub">Six distribution feeders · 15-minute rolling window</p></div></div>
+      <div class="tv-scroll" style="margin-top:12px" id="feeders"></div>
+    </section>
+
+  </div>
+
+  <footer class="foot">
+    <span>Mock data for demonstration — not connected to a live SCADA system.</span>
+    <span>Voltra Energy · Operations Console v4.2</span>
+  </footer>
+</div>
+
+<script>
+(() => {
+"use strict";
+const NS = "http://www.w3.org/2000/svg";
+const mk = (n, a = {}) => { const e = document.createElementNS(NS, n); for (const k in a) e.setAttribute(k, a[k]); return e; };
+const tok = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const $ = s => document.querySelector(s);
+const fmt = (v, d = 1) => v.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+const renderers = [];
+const reg = fn => { renderers.push(fn); fn(); };
+const redraw = () => renderers.forEach(f => f());
+
+function placeTip(tip, svg, xu, yu, W, H, pad) {
+  const wrap = tip.parentElement.getBoundingClientRect(), r = svg.getBoundingClientRect();
+  const top = (r.top - wrap.top) + (yu / H) * r.height;
+  tip.style.left = Math.max(pad, Math.min(wrap.width - pad, (r.left - wrap.left) + (xu / W) * r.width)) + "px";
+  flipTip(tip, top, top + 18);   /* never let the tooltip ride up over the card heading */
+}
+function flipTip(tip, above, below) {
+  const fits = above - tip.offsetHeight >= 0;
+  tip.classList.toggle("below", !fits);
+  tip.style.top = (fits ? above : below) + "px";
+}
+
+/* square at the baseline, 4px rounded data-end */
+function barPath(x, y, w, h, r) {
+  r = Math.max(0, Math.min(r, h, w / 2));
+  return `M${x},${y + h} L${x},${y + r} Q${x},${y} ${x + r},${y} L${x + w - r},${y} Q${x + w},${y} ${x + w},${y + r} L${x + w},${y + h} Z`;
+}
+function gridAndAxes(svg, P, W, H, ticks, yMax, fmtTick) {
+  const ih = H - P.t - P.b;
+  ticks.forEach(t => {
+    const y = P.t + (1 - t / yMax) * ih;
+    svg.appendChild(mk("line", { x1: P.l, x2: W - P.r, y1: y, y2: y, stroke: t === 0 ? tok("--axis") : tok("--grid"), "stroke-width": 1 }));
+    const lb = mk("text", { x: P.l - 10, y: y + 4, "text-anchor": "end", fill: tok("--text-muted"), "font-size": 11, style: "font-variant-numeric:tabular-nums" });
+    lb.textContent = fmtTick(t);
+    svg.appendChild(lb);
+  });
+}
+function legend(el, items, shape) {
+  el.innerHTML = items.map(i =>
+    `<span class="legend-item"><span class="swatch${shape === "sq" ? " sq" : ""}" style="background:${i.color}"></span>${i.name}</span>`).join("");
+}
+function tableView(el, head, rows) {
+  el.innerHTML = `<table><thead><tr>${head.map(h => `<th scope="col">${h}</th>`).join("")}</tr></thead>`
+    + `<tbody>${rows.map(r => `<tr><th scope="row" style="font-weight:500;color:var(--text-primary)">${r[0]}</th>`
+      + `${r.slice(1).map(c => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+}
+
+/* ── Line chart with crosshair tooltip ─────────────────────────────── */
+function lineChart(cfg) {
+  const mount = $(cfg.el), tip = mount.closest(".chart-wrap").querySelector(".tip");
+  reg(() => {
+    mount.innerHTML = "";
+    const W = 780, H = 300, P = { l: 44, r: 64, t: 16, b: 34 };
+    const n = cfg.labels.length, iw = W - P.l - P.r, ih = H - P.t - P.b;
+    const step = iw / (n - 1);
+    const x = i => P.l + i * step, y = v => P.t + (1 - v / cfg.yMax) * ih;
+    const svg = mk("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": cfg.aria });
+    svg.style.minWidth = Math.round(W * 0.78) + "px";   /* legibility floor — scroll rather than shrink */
+    gridAndAxes(svg, P, W, H, cfg.ticks, cfg.yMax, t => t);
+
+    cfg.labels.forEach((l, i) => {
+      if (i % cfg.every) return;
+      const t = mk("text", { x: x(i), y: H - P.b + 20, "text-anchor": "middle", fill: tok("--text-muted"), "font-size": 11 });
+      t.textContent = l;
+      svg.appendChild(t);
+    });
+
+    const colors = cfg.series.map(s => tok(s.color));
+    cfg.series.forEach((s, si) => {
+      if (s.area) {
+        const d = s.values.map((v, i) => `${i ? "L" : "M"}${x(i)},${y(v)}`).join(" ") + ` L${x(n - 1)},${y(0)} L${x(0)},${y(0)} Z`;
+        svg.appendChild(mk("path", { d, fill: colors[si], "fill-opacity": .10 }));
+      }
+      svg.appendChild(mk("path", {
+        d: s.values.map((v, i) => `${i ? "L" : "M"}${x(i)},${y(v)}`).join(" "),
+        fill: "none", stroke: colors[si], "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round"
+      }));
+      const lx = x(n - 1), ly = y(s.values[n - 1]);
+      svg.appendChild(mk("circle", { cx: lx, cy: ly, r: 4.5, fill: colors[si], stroke: tok("--surface-1"), "stroke-width": 2 }));
+      /* label only the series the story is about — the two converge at the right edge */
+      if (s.endLabel !== false) {
+        const lb = mk("text", { x: lx + 10, y: ly + 4, fill: tok("--text-secondary"), "font-size": 11.5, "font-weight": 600 });
+        lb.textContent = fmt(s.values[n - 1], cfg.dec) + " MW";
+        svg.appendChild(lb);
+      }
+    });
+
+    const cross = mk("line", { y1: P.t, y2: H - P.b, stroke: tok("--axis"), "stroke-width": 1, visibility: "hidden" });
+    svg.appendChild(cross);
+    const pts = cfg.series.map((s, si) => {
+      const c = mk("circle", { r: 4.5, fill: colors[si], stroke: tok("--surface-1"), "stroke-width": 2, visibility: "hidden" });
+      svg.appendChild(c);
+      return c;
+    });
+    const hit = mk("rect", {
+      class: "hit", x: P.l - step / 2, y: P.t, width: iw + step, height: ih, fill: "transparent",
+      tabindex: 0, role: "application", "aria-label": cfg.aria + ". Use the arrow keys to step through hours."
+    });
+    svg.appendChild(hit);
+
+    let idx = -1;
+    const show = i => {
+      idx = i;
+      cross.setAttribute("x1", x(i)); cross.setAttribute("x2", x(i)); cross.setAttribute("visibility", "visible");
+      pts.forEach((p, si) => { p.setAttribute("cx", x(i)); p.setAttribute("cy", y(cfg.series[si].values[i])); p.setAttribute("visibility", "visible"); });
+      tip.hidden = false;
+      tip.innerHTML = `<div class="tt">${cfg.labels[i]}${cfg.labelSuffix || ""}</div>` + cfg.series.map((s, si) =>
+        `<div class="tr"><span class="n"><span class="swatch" style="background:${colors[si]}"></span>${s.name}</span><span class="val">${fmt(s.values[i], cfg.dec)} ${cfg.unit}</span></div>`).join("");
+      placeTip(tip, svg, x(i), P.t + 4, W, H, 76);
+    };
+    const hide = () => { tip.hidden = true; cross.setAttribute("visibility", "hidden"); pts.forEach(p => p.setAttribute("visibility", "hidden")); };
+    hit.addEventListener("mousemove", e => {
+      const r = svg.getBoundingClientRect();
+      show(Math.max(0, Math.min(n - 1, Math.round(((e.clientX - r.left) / r.width * W - P.l) / step))));
+    });
+    hit.addEventListener("mouseleave", hide);
+    hit.addEventListener("blur", hide);
+    hit.addEventListener("focus", () => show(idx < 0 ? n - 1 : idx));
+    hit.addEventListener("keydown", e => {
+      if (e.key === "ArrowRight") { show(Math.min(n - 1, idx + 1)); e.preventDefault(); }
+      if (e.key === "ArrowLeft")  { show(Math.max(0, idx - 1)); e.preventDefault(); }
+      if (e.key === "Escape") hide();
+    });
+    mount.appendChild(svg);
+  });
+}
+
+/* ── Column chart (single series) with reference line ──────────────── */
+function columnChart(cfg) {
+  const mount = $(cfg.el), tip = mount.closest(".chart-wrap").querySelector(".tip");
+  reg(() => {
+    mount.innerHTML = "";
+    const W = 420, H = 300, P = { l: 38, r: 12, t: 22, b: 34 };
+    const n = cfg.labels.length, iw = W - P.l - P.r, ih = H - P.t - P.b;
+    const band = iw / n, bw = Math.min(24, band * 0.6);
+    const y = v => P.t + (1 - v / cfg.yMax) * ih;
+    const svg = mk("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": cfg.aria });
+    svg.style.minWidth = Math.round(W * 0.78) + "px";   /* legibility floor — scroll rather than shrink */
+    gridAndAxes(svg, P, W, H, cfg.ticks, cfg.yMax, t => t + (cfg.tickUnit || ""));
+    const base = tok(cfg.color), over = tok("--critical");
+
+    cfg.values.forEach((v, i) => {
+      const bx = P.l + i * band + (band - bw) / 2, by = y(v);
+      const c = (cfg.limit != null && v > cfg.limit) ? over : base;
+      const p = mk("path", {
+        d: barPath(bx, by, bw, (H - P.b) - by, 4), fill: c, class: "hit", tabindex: 0,
+        role: "img", "aria-label": `${cfg.labelPrefix || ""}${cfg.labels[i]}: ${fmt(v, cfg.dec)} ${cfg.unit}`
+      });
+      const on = () => {
+        tip.hidden = false;
+        tip.innerHTML = `<div class="tt">${cfg.labelPrefix || ""}${cfg.labels[i]}</div>`
+          + `<div class="tr"><span class="n"><span class="swatch sq" style="background:${c}"></span>${cfg.seriesName}</span><span class="val">${fmt(v, cfg.dec)}${cfg.unit}</span></div>`
+          + (cfg.limit != null ? `<div class="tr"><span class="n">Limit</span><span class="val">${fmt(cfg.limit, 2)}${cfg.unit}</span></div>` : "");
+        placeTip(tip, svg, bx + bw / 2, by - 6, W, H, 78);
+      };
+      p.addEventListener("mouseenter", on);
+      p.addEventListener("focus", on);
+      p.addEventListener("mouseleave", () => { tip.hidden = true; });
+      p.addEventListener("blur", () => { tip.hidden = true; });
+      svg.appendChild(p);
+      const t = mk("text", { x: bx + bw / 2, y: H - P.b + 20, "text-anchor": "middle", fill: tok("--text-muted"), "font-size": 11 });
+      t.textContent = cfg.labels[i];
+      svg.appendChild(t);
+    });
+
+    if (cfg.limit != null) {
+      const ly = y(cfg.limit);
+      svg.appendChild(mk("line", { x1: P.l, x2: W - P.r, y1: ly, y2: ly, stroke: over, "stroke-width": 1 }));
+      const t = mk("text", { x: W - P.r, y: ly - 7, "text-anchor": "end", fill: tok("--text-secondary"), "font-size": 10.5, "font-weight": 600 });
+      t.textContent = cfg.limitLabel;
+      svg.appendChild(t);
+      const i = cfg.values.findIndex(v => v > cfg.limit);   /* direct-label the one bar that matters */
+      if (i > -1) {
+        const bx = P.l + i * band + (band - bw) / 2;
+        const lab = mk("text", { x: bx + bw / 2, y: y(cfg.values[i]) - 9, "text-anchor": "middle", fill: tok("--text-primary"), "font-size": 11.5, "font-weight": 600 });
+        lab.textContent = fmt(cfg.values[i], cfg.dec) + "%";
+        svg.appendChild(lab);
+      }
+    }
+    mount.appendChild(svg);
+  });
+}
+
+/* ── Stacked columns ───────────────────────────────────────────────── */
+function stackedChart(cfg) {
+  const mount = $(cfg.el), tip = mount.closest(".chart-wrap").querySelector(".tip");
+  reg(() => {
+    mount.innerHTML = "";
+    const W = 660, H = 300, P = { l: 46, r: 14, t: 22, b: 34 };
+    const n = cfg.labels.length, iw = W - P.l - P.r, ih = H - P.t - P.b;
+    const band = iw / n, bw = Math.min(24, band * 0.42);
+    const y = v => P.t + (1 - v / cfg.yMax) * ih;
+    const svg = mk("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": cfg.aria });
+    svg.style.minWidth = Math.round(W * 0.78) + "px";   /* legibility floor — scroll rather than shrink */
+    gridAndAxes(svg, P, W, H, cfg.ticks, cfg.yMax, t => t.toLocaleString("en-US"));
+    const colors = cfg.series.map(s => tok(s.color));
+
+    cfg.labels.forEach((lab, i) => {
+      const bx = P.l + i * band + (band - bw) / 2;
+      const total = cfg.series.reduce((a, s) => a + s.values[i], 0);
+      const top = cfg.series.reduce((t, s, k) => s.values[i] > 0 ? k : t, 0);
+      let acc = 0;
+      cfg.series.forEach((s, k) => {
+        const v = s.values[i];
+        if (v <= 0) return;
+        const yT = y(acc + v), yB = y(acc);
+        const h = (yB - yT) - (acc === 0 ? 0 : 2);   /* 2px surface gap between segments */
+        const g = mk("g", { class: "hit", tabindex: 0, role: "img", "aria-label": `${lab}, ${s.name}: ${v} ${cfg.unit}` });
+        g.appendChild(mk("path", { d: k === top ? barPath(bx, yT, bw, h, 4) : `M${bx},${yT} h${bw} v${h} h${-bw} Z`, fill: colors[k] }));
+        const on = () => {
+          tip.hidden = false;
+          tip.innerHTML = `<div class="tt">${lab}</div>` + cfg.series.map((s2, k2) =>
+            `<div class="tr"><span class="n"><span class="swatch sq" style="background:${colors[k2]}"></span>${s2.name}</span><span class="val">${s2.values[i]}</span></div>`).join("")
+            + `<div class="tr" style="border-top:1px solid var(--hairline);margin-top:6px;padding-top:5px"><span class="n">Total</span><span class="val">${total} ${cfg.unit}</span></div>`;
+          placeTip(tip, svg, bx + bw / 2, y(total) - 8, W, H, 84);
+        };
+        g.addEventListener("mouseenter", on);
+        g.addEventListener("focus", on);
+        g.addEventListener("mouseleave", () => { tip.hidden = true; });
+        g.addEventListener("blur", () => { tip.hidden = true; });
+        svg.appendChild(g);
+        acc += v;
+      });
+      const tl = mk("text", { x: bx + bw / 2, y: y(total) - 9, "text-anchor": "middle", fill: tok("--text-secondary"), "font-size": 11, "font-weight": 600 });
+      tl.textContent = total;
+      svg.appendChild(tl);
+      const t = mk("text", { x: bx + bw / 2, y: H - P.b + 20, "text-anchor": "middle", fill: tok("--text-muted"), "font-size": 11 });
+      t.textContent = lab;
+      svg.appendChild(t);
+    });
+    mount.appendChild(svg);
+  });
+}
+
+/* ── Sparkline (de-emphasis ramp step, current point in accent) ────── */
+function sparkline(host, values, accent) {
+  const W = 92, H = 30, pad = 4;
+  const min = Math.min(...values), max = Math.max(...values), span = (max - min) || 1;
+  const x = i => (i / (values.length - 1)) * (W - 8) + 4;
+  const y = v => H - pad - ((v - min) / span) * (H - pad * 2);
+  const svg = mk("svg", { class: "spark", viewBox: `0 0 ${W} ${H}`, "aria-hidden": "true", focusable: "false" });
+  svg.appendChild(mk("path", {
+    d: values.map((v, i) => `${i ? "L" : "M"}${x(i)},${y(v)}`).join(" "),
+    fill: "none", stroke: tok("--ramp-250"), "stroke-width": 2, "stroke-linecap": "round", "stroke-linejoin": "round"
+  }));
+  svg.appendChild(mk("circle", { cx: x(values.length - 1), cy: y(values[values.length - 1]), r: 4, fill: tok(accent), stroke: tok("--surface-1"), "stroke-width": 2 }));
+  host.appendChild(svg);
+}
+function statTile(sel, t) {
+  const el = $(sel);
+  reg(() => {
+    el.innerHTML = `<p class="eyebrow">${t.eyebrow}</p>
+      <p class="value">${t.value}<small>${t.unit}</small></p>
+      <div class="foot"><p class="delta ${t.dir}">${t.dir === "flat" ? ""
+        : `<svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true"><path d="${t.dir === "up" ? "M6 1 11 8H1z" : "M6 11 1 4h10z"}"/></svg>`}
+        ${t.delta} <span class="vs">${t.vs}</span></p></div>`;
+    sparkline(el.querySelector(".foot"), t.spark, t.accent || "--series-1");
+  });
+}
+
+/* ═══ Data ═════════════════════════════════════════════════════════ */
+const hours   = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
+const actual   = [31.2,29.8,28.9,28.4,28.7,30.1,33.6,38.2,42.1,44.0,45.2,46.1,46.8,47.2,47.9,48.6,49.8,51.4,52.6,51.1,47.3,42.8,37.9,33.4];
+const forecast = [32.0,30.4,29.2,28.6,29.1,30.8,34.4,39.0,42.8,44.6,45.6,46.0,46.4,46.9,47.4,48.0,49.0,50.2,51.0,49.8,46.6,42.2,37.4,33.0];
+
+statTile("#tile-voltage", { eyebrow: "Bus A voltage", value: "13.78", unit: "kV", dir: "flat", delta: "−0.4%", vs: "vs. 1 h ago", spark: [13.84,13.82,13.85,13.81,13.79,13.80,13.77,13.78,13.81,13.79,13.77,13.78] });
+statTile("#tile-pf",      { eyebrow: "Power factor", value: "0.983", unit: "", dir: "up", delta: "+0.006", vs: "vs. 1 h ago", spark: [.971,.974,.973,.976,.978,.977,.979,.981,.980,.982,.981,.983] });
+statTile("#tile-freq",    { eyebrow: "System frequency", value: "59.98", unit: "Hz", dir: "flat", delta: "−0.02", vs: "nominal 60.00", spark: [60.01,60.00,59.99,60.01,60.02,60.00,59.99,59.98,59.99,60.00,59.99,59.98] });
+statTile("#tile-thd",     { eyebrow: "Voltage THD", value: "3.1", unit: "%", dir: "down", delta: "+0.8 pt", vs: "vs. 1 h ago — rising", accent: "--series-2", spark: [2.1,2.2,2.0,2.3,2.4,2.3,2.6,2.7,2.6,2.9,3.0,3.1] });
+
+legend($("#lg-load"), [{ name: "Actual load", color: tok("--series-1") }, { name: "Day-ahead forecast", color: tok("--series-2") }]);
+lineChart({
+  el: "#c-load", labels: hours, every: 3, yMax: 60, ticks: [0, 15, 30, 45, 60], unit: "MW", dec: 1,
+  labelSuffix: ":00", aria: "Bus load versus day-ahead forecast over 24 hours, in megawatts",
+  series: [
+    { name: "Actual load", color: "--series-1", values: actual, area: true },
+    { name: "Day-ahead forecast", color: "--series-2", values: forecast, endLabel: false }
+  ]
+});
+tableView($("#t-load"), ["Hour", "Actual (MW)", "Forecast (MW)", "Variance (MW)"],
+  hours.map((h, i) => [h + ":00", fmt(actual[i]), fmt(forecast[i]), (actual[i] - forecast[i] >= 0 ? "+" : "−") + fmt(Math.abs(actual[i] - forecast[i]))]));
+
+const harmOrders = [3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25];
+const harmVals   = [2.41, 3.08, 1.86, 0.94, 1.42, 0.88, 0.41, 0.63, 0.37, 0.22, 0.29, 0.18];
+legend($("#lg-harm"), [{ name: "Within limit", color: tok("--series-1") }, { name: "Above IEEE 519 limit", color: tok("--critical") }], "sq");
+columnChart({
+  el: "#c-harm", labels: harmOrders.map(String), values: harmVals, yMax: 4, ticks: [0, 1, 2, 3, 4],
+  color: "--series-1", unit: "%", dec: 2, tickUnit: "%", seriesName: "Measured", labelPrefix: "Harmonic order h",
+  limit: 3.0, limitLabel: "IEEE 519 limit 3.0%",
+  aria: "Harmonic voltage distortion by harmonic order, as a percentage of the fundamental"
+});
+tableView($("#t-harm"), ["Order", "Measured (%)", "Limit (%)", "Status"],
+  harmOrders.map((o, i) => ["h" + o, fmt(harmVals[i], 2), "3.00", harmVals[i] > 3 ? "Over limit" : "Within limit"]));
+
+const blocks = ["00–04", "04–08", "08–12", "12–16", "16–20", "20–24"];
+const mix = [
+  { name: "Grid import",     color: "--series-1", values: [108, 118, 142, 120, 168, 140] },
+  { name: "Solar PV",        color: "--series-2", values: [0, 14, 86, 102, 38, 0] },
+  { name: "Battery",         color: "--series-3", values: [22, 10, 6, 28, 44, 30] },
+  { name: "Diesel standby",  color: "--series-4", values: [0, 0, 0, 0, 12, 4] }
+];
+legend($("#lg-mix"), mix.map(s => ({ name: s.name, color: tok(s.color) })), "sq");
+stackedChart({
+  el: "#c-mix", labels: blocks, series: mix, yMax: 280, ticks: [0, 70, 140, 210, 280], unit: "MWh",
+  aria: "Energy served by source per four-hour block, in megawatt-hours"
+});
+tableView($("#t-mix"), ["Block", ...mix.map(s => s.name + " (MWh)"), "Total (MWh)"],
+  blocks.map((b, i) => [b, ...mix.map(s => s.values[i]), mix.reduce((a, s) => a + s.values[i], 0)]));
+
+/* Meters */
+reg(() => {
+  const data = [
+    { name: "Transformer T-2", v: 78, cap: "25 MVA", cls: "" },
+    { name: "Transformer T-5", v: 91, cap: "25 MVA", cls: "warn" },
+    { name: "Feeder F-115 Lakeside", v: 103, cap: "8 MVA", cls: "crit" },
+    { name: "BESS state of charge", v: 64, cap: "12 MWh", cls: "" }
+  ];
+  $("#meters").innerHTML = data.map(d => `
+    <div class="meter">
+      <div class="meter-top"><span class="meter-name">${d.name}</span><span class="meter-val">${d.v}%</span></div>
+      <div class="track"><div class="fill ${d.cls}" style="width:${Math.min(100, d.v)}%"></div></div>
+      <div class="meter-foot"><span>${d.cap}</span><span>${d.v > 100 ? "Overloaded" : d.v >= 90 ? "Near limit" : "Nominal"}</span></div>
+    </div>`).join("");
+});
+
+/* Status chips — icon + label, never colour alone */
+const ICON = {
+  good:     '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 8.5 3.2 3.2L13 5"/></svg>',
+  warning:  '<svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.6 15 14H1z"/><path d="M7.2 6h1.6v4H7.2zM7.2 11h1.6v1.6H7.2z" fill="var(--surface-1)"/></svg>',
+  serious:  '<svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="7"/><path d="M7.2 4h1.6v5H7.2zM7.2 10.4h1.6V12H7.2z" fill="var(--surface-1)"/></svg>',
+  critical: '<svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M5.2 1h5.6L15 5.2v5.6L10.8 15H5.2L1 10.8V5.2z"/><path d="M7.2 4h1.6v5H7.2zM7.2 10.4h1.6V12H7.2z" fill="var(--surface-1)"/></svg>'
+};
+const chip = (lvl, label) => `<span class="chip ${lvl}">${ICON[lvl]}${label}</span>`;
+
+reg(() => {
+  const alarms = [
+    { lvl: "critical", code: "OV-4412", msg: "F-115 Lakeside loading at 103% of rating", t: "15:38" },
+    { lvl: "serious",  code: "PQ-2109", msg: "5th harmonic 3.08% exceeds IEEE 519 limit", t: "15:21" },
+    { lvl: "warning",  code: "TX-0877", msg: "T-5 top-oil temperature 88 °C and rising", t: "14:54" }
+  ];
+  $("#alarms").innerHTML = alarms.map(a => `
+    <div style="display:flex;gap:12px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--hairline-soft)">
+      <div style="min-width:94px">${chip(a.lvl, a.lvl[0].toUpperCase() + a.lvl.slice(1))}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px">${a.msg}</div>
+        <div style="font-size:11.5px;color:var(--text-muted);margin-top:2px">${a.code} · raised ${a.t} · unacknowledged</div>
+      </div>
+    </div>`).join("")
+    + `<div style="display:flex;gap:30px;flex-wrap:wrap;margin-top:18px;padding-top:16px;border-top:1px solid var(--hairline)">
+        ${[["Raised today", "27"], ["Auto-cleared", "11"], ["Acknowledged", "13"], ["Mean time to ack.", "4m 12s"]]
+          .map(([k, v]) => `<div><p class="eyebrow">${k}</p><p style="font-size:17px;font-weight:600;margin-top:3px">${v}</p></div>`).join("")}
+       </div>
+       <p style="font-size:11.5px;color:var(--text-muted);margin-top:14px">Event volume over the last 24 hours. Alarms escalate to the on-call engineer after 15 minutes unacknowledged.</p>`;
+});
+
+/* Single-line diagram */
+reg(() => {
+  const W = 980, H = 238;
+  const ink = tok("--text-primary"), mut = tok("--text-muted"), sec = tok("--text-secondary");
+  const line = tok("--axis"), acc = tok("--series-1"), surf = tok("--surface-1");
+  const svg = mk("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Single-line diagram: a 138 kV source feeds transformer T-2 and the 13.8 kV Bus A, which supplies six distribution feeders." });
+  const txt = (x, y, s, o = {}) => {
+    const t = mk("text", { x, y, fill: o.fill || mut, "font-size": o.size || 11, "text-anchor": o.anchor || "middle", "font-weight": o.weight || 400 });
+    t.textContent = s;
+    svg.appendChild(t);
+  };
+
+  svg.appendChild(mk("circle", { cx: 60, cy: 36, r: 13, fill: "none", stroke: acc, "stroke-width": 2 }));
+  txt(60, 41, "~", { fill: acc, size: 16, weight: 700 });
+  txt(60, 14, "138 kV SOURCE", { size: 10 });
+  svg.appendChild(mk("line", { x1: 60, y1: 49, x2: 60, y2: 80, stroke: line, "stroke-width": 2 }));
+  svg.appendChild(mk("circle", { cx: 60, cy: 93, r: 13, fill: "none", stroke: line, "stroke-width": 2 }));
+  svg.appendChild(mk("circle", { cx: 60, cy: 107, r: 13, fill: "none", stroke: line, "stroke-width": 2 }));
+  txt(96, 96, "T-2 · 25 MVA · 78% loaded", { anchor: "start", fill: sec, size: 11.5, weight: 600 });
+  txt(96, 112, "138 / 13.8 kV · Dyn1 · top-oil 71 °C", { anchor: "start", size: 10.5 });
+  svg.appendChild(mk("line", { x1: 60, y1: 120, x2: 60, y2: 152, stroke: line, "stroke-width": 2 }));
+  svg.appendChild(mk("rect", { x: 52, y: 128, width: 16, height: 16, fill: surf, stroke: acc, "stroke-width": 2, rx: 2 }));
+  svg.appendChild(mk("line", { x1: 60, y1: 152, x2: W - 40, y2: 152, stroke: ink, "stroke-width": 4, "stroke-linecap": "round" }));
+  txt(W - 40, 143, "BUS A — 13.8 kV — 48.6 MW", { anchor: "end", fill: sec, size: 10.5, weight: 600 });
+
+  const feeders = [
+    { id: "F-101", name: "Northfield",  load: 82,  lvl: "good" },
+    { id: "F-104", name: "Harbor Ind.", load: 94,  lvl: "serious" },
+    { id: "F-108", name: "Westgate",    load: 61,  lvl: "good" },
+    { id: "F-112", name: "Rail Yard",   load: 77,  lvl: "warning" },
+    { id: "F-115", name: "Lakeside",    load: 103, lvl: "critical" },
+    { id: "F-119", name: "Old Mill",    load: 44,  lvl: "good" }
+  ];
+  const sc = { good: tok("--good"), warning: tok("--warning"), serious: tok("--serious"), critical: tok("--critical") };
+  const x0 = 170, gap = (W - 70 - x0) / (feeders.length - 1);
+  feeders.forEach((f, i) => {
+    const x = x0 + i * gap;
+    svg.appendChild(mk("line", { x1: x, y1: 152, x2: x, y2: 190, stroke: line, "stroke-width": 2 }));
+    svg.appendChild(mk("rect", { x: x - 8, y: 162, width: 16, height: 16, fill: surf, stroke: f.lvl === "critical" ? sc.critical : line, "stroke-width": 2, rx: 2 }));
+    svg.appendChild(mk("circle", { cx: x, cy: 198, r: 4.5, fill: sc[f.lvl], stroke: surf, "stroke-width": 2 }));
+    txt(x, 219, f.id, { fill: ink, size: 11.5, weight: 600 });
+    txt(x, 233, f.name + " · " + f.load + "%", { size: 10.5 });
+  });
+  const host = $("#sld");
+  host.innerHTML = "";
+  host.appendChild(svg);
+});
+
+/* Feeder table */
+reg(() => {
+  const rows = [
+    ["F-101", "Northfield", "82%", "0.98", "2.4%", "good", "Nominal"],
+    ["F-104", "Harbor Industrial", "94%", "0.91", "4.8%", "serious", "Correct power factor"],
+    ["F-108", "Westgate", "61%", "0.99", "1.9%", "good", "Nominal"],
+    ["F-112", "Rail Yard", "77%", "0.96", "3.3%", "warning", "Watch THD"],
+    ["F-115", "Lakeside", "103%", "0.88", "5.6%", "critical", "Shed load"],
+    ["F-119", "Old Mill", "44%", "0.99", "1.2%", "good", "Nominal"]
+  ];
+  $("#feeders").innerHTML = `<table>
+    <thead><tr><th scope="col">Feeder</th><th scope="col" style="text-align:left">Circuit</th><th scope="col">Loading</th><th scope="col">Power factor</th><th scope="col">Voltage THD</th><th scope="col">Status</th></tr></thead>
+    <tbody>${rows.map(r => `<tr>
+      <th scope="row" style="font-weight:600;color:var(--text-primary)">${r[0]}</th>
+      <td style="text-align:left;color:var(--text-secondary)">${r[1]}</td>
+      <td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td>
+      <td>${chip(r[5], r[6])}</td></tr>`).join("")}</tbody></table>`;
+});
+
+/* Theme */
+const toggle = $("#themeToggle");
+const sysDark = window.matchMedia("(prefers-color-scheme: dark)");
+const isDark = () => document.documentElement.dataset.theme ? document.documentElement.dataset.theme === "dark" : sysDark.matches;
+const syncLabel = () => { toggle.textContent = isDark() ? "Light mode" : "Dark mode"; };
+toggle.addEventListener("click", () => {
+  document.documentElement.dataset.theme = isDark() ? "light" : "dark";
+  syncLabel();
+  redraw();
+});
+sysDark.addEventListener("change", () => { syncLabel(); redraw(); });
+syncLabel();
+
+/* The filter row is mock-only — keep its pressed state honest */
+document.querySelectorAll(".segmented").forEach(g => g.addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  g.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+}));
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,892 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kami Foundation — Annual Fund</title>
+<style>
+/* ── Tokens ─────────────────────────────────────────────────────────── */
+:root {
+  color-scheme: light;
+  --plane:          #f9f9f7;
+  --surface-1:      #fcfcfb;
+  --surface-2:      #f3f2ee;
+  --text-primary:   #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted:     #898781;
+  --grid:           #e1e0d9;
+  --axis:           #c3c2b7;
+  --hairline:       rgba(11,11,11,0.10);
+  --hairline-soft:  rgba(11,11,11,0.05);
+
+  /* categorical — fixed slot order, never cycled */
+  --series-1: #2a78d6;  /* major gifts   */
+  --series-2: #eb6834;  /* direct mail   */
+  --series-3: #1baf7a;  /* events        */
+  --series-4: #eda100;  /* digital       */
+
+  /* ordinal ramp (gift tiers) — validated light→dark, one hue */
+  --ord-1: #86b6ef; --ord-2: #5598e7; --ord-3: #2a78d6; --ord-4: #1c5cab; --ord-5: #104281;
+
+  /* sequential ramp (cohort retention) + the ink that clears each step */
+  --heat-1: #cde2fb; --heat-2: #9ec5f4; --heat-3: #5598e7; --heat-4: #2a78d6; --heat-5: #184f95;
+  --ink-1: #0b0b0b; --ink-2: #0b0b0b; --ink-3: #0b0b0b; --ink-4: #ffffff; --ink-5: #ffffff;
+
+  --ramp-100: #cde2fb;
+  --ramp-250: #86b6ef;
+
+  --good:     #0ca30c;
+  --warning:  #fab219;
+  --critical: #d03b3b;
+  --delta-up-good: #006300;
+
+  --shadow: 0 1px 2px rgba(11,11,11,.04), 0 10px 30px -16px rgba(11,11,11,.16);
+  --radius: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --plane:          #0d0d0d;
+    --surface-1:      #1a1a19;
+    --surface-2:      #222221;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #898781;
+    --grid:           #2c2c2a;
+    --axis:           #383835;
+    --hairline:       rgba(255,255,255,0.10);
+    --hairline-soft:  rgba(255,255,255,0.06);
+    --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-4: #c98500;
+    --ord-1: #9ec5f4; --ord-2: #6da7ec; --ord-3: #3987e5; --ord-4: #256abf; --ord-5: #184f95;
+    --heat-1: #0d366b; --heat-2: #184f95; --heat-3: #2a78d6; --heat-4: #6da7ec; --heat-5: #b7d3f6;
+    --ink-1: #ffffff; --ink-2: #ffffff; --ink-3: #ffffff; --ink-4: #0b0b0b; --ink-5: #0b0b0b;
+    --ramp-100: #0d366b;
+    --ramp-250: #184f95;
+    --delta-up-good: #0ca30c;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px -16px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --plane:          #0d0d0d;
+  --surface-1:      #1a1a19;
+  --surface-2:      #222221;
+  --text-primary:   #ffffff;
+  --text-secondary: #c3c2b7;
+  --text-muted:     #898781;
+  --grid:           #2c2c2a;
+  --axis:           #383835;
+  --hairline:       rgba(255,255,255,0.10);
+  --hairline-soft:  rgba(255,255,255,0.06);
+  --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-4: #c98500;
+  --ord-1: #9ec5f4; --ord-2: #6da7ec; --ord-3: #3987e5; --ord-4: #256abf; --ord-5: #184f95;
+  --heat-1: #0d366b; --heat-2: #184f95; --heat-3: #2a78d6; --heat-4: #6da7ec; --heat-5: #b7d3f6;
+  --ink-1: #ffffff; --ink-2: #ffffff; --ink-3: #ffffff; --ink-4: #0b0b0b; --ink-5: #0b0b0b;
+  --ramp-100: #0d366b;
+  --ramp-250: #184f95;
+  --delta-up-good: #0ca30c;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px -16px rgba(0,0,0,.7);
+}
+
+/* ── Base ───────────────────────────────────────────────────────────── */
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 14px; line-height: 1.5;
+  color: var(--text-primary);
+  background: var(--plane);
+}
+.wash {
+  position: fixed; inset: 0 0 auto 0; height: 420px; pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(760px 300px at 12% -8%, color-mix(in oklab, var(--series-1) 14%, transparent), transparent 70%),
+    radial-gradient(640px 280px at 86% -14%, color-mix(in oklab, var(--series-3) 12%, transparent), transparent 70%);
+}
+.shell { position: relative; z-index: 1; max-width: 1320px; margin: 0 auto; padding: 0 20px 56px; }
+h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.012em; }
+p { margin: 0; }
+.eyebrow { font-size: 10.5px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); }
+
+/* ── Masthead ───────────────────────────────────────────────────────── */
+.masthead { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding-block: 24px 20px; }
+.brand { display: flex; align-items: center; gap: 12px; margin-right: auto; }
+.brand-mark { width: 38px; height: 38px; border-radius: 12px; flex: none; background: var(--series-1); display: grid; place-items: center; }
+.brand-name { font-size: 16px; font-weight: 600; }
+.brand-sub { font-size: 11.5px; color: var(--text-muted); }
+.pill {
+  display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px;
+  border-radius: 999px; border: 1px solid var(--hairline); background: var(--surface-1);
+  font-size: 11.5px; font-weight: 500; color: var(--text-secondary);
+}
+.btn {
+  font: inherit; font-size: 12px; font-weight: 500; color: var(--text-secondary);
+  background: var(--surface-1); border: 1px solid var(--hairline);
+  border-radius: 9px; padding: 7px 13px; cursor: pointer;
+}
+.btn:hover { background: var(--surface-2); color: var(--text-primary); }
+.btn:focus-visible { outline: 2px solid var(--series-1); outline-offset: 2px; }
+
+/* ── Filter row ─────────────────────────────────────────────────────── */
+.filters { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-block: 4px 18px; }
+.segmented { display: flex; background: var(--surface-2); border-radius: 10px; padding: 3px; gap: 2px; }
+.segmented button {
+  font: inherit; font-size: 12px; font-weight: 500; color: var(--text-secondary);
+  background: none; border: 0; border-radius: 8px; padding: 5px 13px; cursor: pointer;
+}
+.segmented button[aria-pressed="true"] { background: var(--surface-1); color: var(--text-primary); box-shadow: var(--shadow); }
+.segmented button:focus-visible { outline: 2px solid var(--series-1); outline-offset: 1px; }
+.combo {
+  font: inherit; font-size: 12px; color: var(--text-secondary);
+  background: var(--surface-1); border: 1px solid var(--hairline); border-radius: 9px; padding: 6px 10px;
+}
+.filters .spacer { margin-left: auto; }
+.stamp { font-size: 11.5px; color: var(--text-muted); }
+
+/* ── Grid & cards ───────────────────────────────────────────────────── */
+.grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
+.c3 { grid-column: span 3; } .c4 { grid-column: span 4; } .c5 { grid-column: span 5; }
+.c7 { grid-column: span 7; } .c8 { grid-column: span 8; } .c12 { grid-column: span 12; }
+@media (max-width: 1080px) { .c4, .c5, .c7, .c8 { grid-column: span 12; } .c3 { grid-column: span 6; } }
+@media (max-width: 620px)  { .c3 { grid-column: span 12; } }
+
+.card {
+  background: var(--surface-1); border: 1px solid var(--hairline);
+  border-radius: var(--radius); padding: 20px; margin: 0;
+  box-shadow: var(--shadow); min-width: 0;
+}
+.card-head { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 4px; }
+.card-head h3 { font-size: 14.5px; }
+.card-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+/* ── Hero / campaign thermometer ────────────────────────────────────── */
+.hero { padding: 28px; display: flex; gap: 40px; flex-wrap: wrap; align-items: flex-start; }
+.hero-left { flex: 1 1 280px; min-width: 0; }
+.hero-fig { font-size: 64px; line-height: 1; font-weight: 600; letter-spacing: -0.035em; margin-top: 10px; }
+.hero-of { font-size: 14px; color: var(--text-secondary); margin-top: 10px; }
+.hero-right { flex: 2 1 420px; min-width: 0; }
+.therm { margin-top: 20px; }
+.therm-track { position: relative; height: 18px; border-radius: 9px; background: var(--ramp-100); overflow: hidden; }
+.therm-fill { height: 100%; border-radius: 9px; background: var(--series-1); }
+.therm-marks { position: relative; height: 22px; margin-top: 6px; }
+.therm-marks span {
+  position: absolute; transform: translateX(-50%);
+  font-size: 10.5px; color: var(--text-muted); white-space: nowrap;
+}
+.therm-marks span::before {
+  content: ""; position: absolute; top: -9px; left: 50%; width: 1px; height: 6px; background: var(--axis);
+}
+.hero-stats { display: flex; gap: 32px; flex-wrap: wrap; margin-top: 26px; }
+.hero-stats .v { font-size: 19px; font-weight: 600; margin-top: 3px; }
+
+/* ── Stat tiles ─────────────────────────────────────────────────────── */
+.tile .value { font-size: 31px; font-weight: 600; letter-spacing: -0.022em; line-height: 1.15; margin-top: 8px; }
+.tile .foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-top: 10px; }
+.delta { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; flex-wrap: wrap; }
+.delta.up   { color: var(--delta-up-good); }
+.delta.down { color: var(--critical); }
+.delta.flat { color: var(--text-muted); }
+.delta .vs { font-weight: 400; color: var(--text-muted); }
+.spark { width: 92px; height: 30px; flex: none; }
+
+/* ── Charts ─────────────────────────────────────────────────────────── */
+.legend { display: flex; flex-wrap: wrap; gap: 14px; margin: 12px 0 2px; }
+.legend-item { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); }
+.swatch { width: 12px; height: 3px; border-radius: 2px; flex: none; display: inline-block; }
+.swatch.sq { width: 10px; height: 10px; border-radius: 3px; }
+.chart-wrap { position: relative; margin-top: 6px; }
+.chart-wrap svg { display: block; width: 100%; height: auto; overflow: visible; }
+/* charts keep a legibility floor and scroll sideways rather than shrink into unreadable type */
+.chart-scroll { overflow-x: auto; padding-bottom: 2px; }
+.hit:focus-visible { outline: 2px solid var(--series-1); outline-offset: 2px; }
+.tip {
+  position: absolute; pointer-events: none; z-index: 5;
+  background: var(--surface-1); border: 1px solid var(--hairline);
+  border-radius: 10px; padding: 9px 11px; box-shadow: var(--shadow);
+  font-size: 12px; min-width: 150px; transform: translate(-50%, -100%);
+}
+.tip.below { transform: translate(-50%, 0); }
+.tip[hidden] { display: none; }
+.tip .tt { font-weight: 600; font-size: 11.5px; margin-bottom: 6px; }
+.tip .tr { display: flex; align-items: center; gap: 10px; justify-content: space-between; margin-top: 3px; color: var(--text-secondary); }
+.tip .tr .n { display: inline-flex; align-items: center; gap: 6px; }
+.tip .tr .val { font-weight: 600; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+
+details.tv { margin-top: 14px; border-top: 1px solid var(--hairline); padding-top: 10px; }
+details.tv summary {
+  cursor: pointer; font-size: 11.5px; font-weight: 500; color: var(--text-muted);
+  list-style: none; display: inline-flex; align-items: center; gap: 6px;
+}
+details.tv summary::-webkit-details-marker { display: none; }
+details.tv summary::before { content: "\25B8"; font-size: 9px; }
+details.tv[open] summary::before { content: "\25BE"; }
+details.tv summary:hover { color: var(--text-primary); }
+.tv-scroll { overflow-x: auto; margin-top: 10px; }
+table { border-collapse: collapse; width: 100%; font-size: 12px; }
+th, td { text-align: right; padding: 7px 10px; border-bottom: 1px solid var(--hairline-soft); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+thead th { font-weight: 600; color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+tbody td { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+
+/* ── Cohort heatmap ─────────────────────────────────────────────────── */
+.heat { margin-top: 14px; }
+.heat table { min-width: 460px; }
+.heat th, .heat td { border-bottom: 0; padding: 3px; }
+.heat thead th { text-align: center; padding-bottom: 8px; }
+.heat tbody th { text-align: left; font-weight: 500; color: var(--text-secondary); font-size: 12px; padding-right: 10px; }
+.cell {
+  display: grid; place-items: center; height: 42px; border-radius: 8px;
+  font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums;
+  cursor: default;
+}
+.cell.empty { background: var(--surface-2); color: var(--text-muted); font-weight: 400; }
+.cell:focus-visible { outline: 2px solid var(--series-1); outline-offset: 2px; }
+.scale { display: flex; align-items: center; gap: 8px; margin-top: 14px; font-size: 11px; color: var(--text-muted); }
+.scale .steps { display: flex; gap: 2px; }
+.scale .steps i { width: 26px; height: 10px; border-radius: 3px; display: block; }
+
+/* ── Meters ─────────────────────────────────────────────────────────── */
+.meter + .meter { margin-top: 16px; }
+.meter-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.meter-name { font-size: 13px; font-weight: 500; }
+.meter-val { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.track { height: 10px; border-radius: 5px; background: var(--ramp-100); margin-top: 8px; overflow: hidden; }
+.fill { height: 100%; border-radius: 5px; background: var(--series-1); }
+.meter-foot { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-top: 5px; }
+
+/* ── Badges & chips ─────────────────────────────────────────────────── */
+.badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px;
+  border: 1px solid var(--hairline); color: var(--text-secondary); background: var(--surface-2);
+  white-space: nowrap;
+}
+.badge i { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); display: block; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+.chip.good { color: var(--delta-up-good); }
+.chip.warning { color: var(--text-primary); }
+.chip.warning svg { color: var(--warning); }
+.chip.critical { color: var(--critical); }
+
+footer.foot {
+  margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--hairline);
+  display: flex; gap: 14px; flex-wrap: wrap; justify-content: space-between;
+  font-size: 11.5px; color: var(--text-muted);
+}
+</style>
+</head>
+<body>
+<div class="wash" aria-hidden="true"></div>
+<div class="shell">
+
+  <header class="masthead">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.5 4.2 12.9a4.8 4.8 0 0 1 6.8-6.8l1 1 1-1a4.8 4.8 0 0 1 6.8 6.8Z"/></svg>
+      </div>
+      <div>
+        <div class="brand-name">Kami Foundation</div>
+        <div class="brand-sub">Development &amp; Advancement — FY2026 Annual Fund</div>
+      </div>
+    </div>
+    <span class="pill">78 days to close</span>
+    <button class="btn" id="themeToggle" type="button">Dark mode</button>
+  </header>
+
+  <div class="filters" role="group" aria-label="Dashboard filters">
+    <div class="segmented" role="group" aria-label="Fiscal period">
+      <button type="button" aria-pressed="false">This month</button>
+      <button type="button" aria-pressed="false">Quarter</button>
+      <button type="button" aria-pressed="true">Fiscal year</button>
+      <button type="button" aria-pressed="false">All time</button>
+    </div>
+    <select class="combo" aria-label="Campaign"><option>All campaigns</option><option>Annual Fund</option><option>Scholarship Fund</option><option>Capital Campaign</option></select>
+    <select class="combo" aria-label="Donor segment"><option>All segments</option><option>Major donors</option><option>Recurring donors</option><option>First-time donors</option></select>
+    <span class="spacer"></span>
+    <span class="stamp">Synced from Raiser’s Edge · 14 Oct 2026, 09:12</span>
+  </div>
+
+  <div class="grid">
+
+    <!-- Hero: campaign thermometer -->
+    <section class="card hero c12">
+      <div class="hero-left">
+        <p class="eyebrow">Raised this fiscal year</p>
+        <div class="hero-fig">$2.84M</div>
+        <p class="hero-of">of a <strong>$4.00M</strong> goal · 71% complete</p>
+        <p class="delta up" style="margin-top:12px">
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true"><path d="M6 1 11 8H1z"/></svg>
+          +$312K <span class="vs">ahead of the seasonal plan</span>
+        </p>
+      </div>
+      <div class="hero-right">
+        <p class="eyebrow">Campaign progress</p>
+        <div class="therm">
+          <div class="track therm-track" role="img" aria-label="Campaign progress: $2.84 million raised of a $4.00 million goal, 71 percent complete.">
+            <div class="therm-fill" style="width:71%"></div>
+          </div>
+          <div class="therm-marks" aria-hidden="true">
+            <span style="left:25%">$1M</span><span style="left:50%">$2M</span>
+            <span style="left:75%">$3M</span><span style="left:100%">$4M goal</span>
+          </div>
+        </div>
+        <div class="hero-stats">
+          <div><p class="eyebrow">Run rate</p><p class="v">$18.4K&thinsp;/&thinsp;day</p></div>
+          <div><p class="eyebrow">Needed to close</p><p class="v">$14.9K&thinsp;/&thinsp;day</p></div>
+          <div><p class="eyebrow">Gifts booked</p><p class="v">5,106</p></div>
+          <div><p class="eyebrow">Pipeline</p><p class="v">$1.62M</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stat tiles -->
+    <section class="card tile c3" id="tile-donors"></section>
+    <section class="card tile c3" id="tile-avg"></section>
+    <section class="card tile c3" id="tile-ret"></section>
+    <section class="card tile c3" id="tile-rec"></section>
+
+    <!-- Cumulative raised -->
+    <figure class="card c8">
+      <figcaption class="card-head">
+        <div>
+          <p class="eyebrow">Pacing</p>
+          <h3>Cumulative raised vs. seasonal plan</h3>
+          <p class="card-sub">Millions of dollars, fiscal year to date · July–May</p>
+        </div>
+      </figcaption>
+      <div class="legend" id="lg-pace"></div>
+      <div class="chart-wrap"><div class="chart-scroll"><div id="c-pace"></div></div><div class="tip" hidden></div></div>
+      <details class="tv"><summary>Table view</summary><div class="tv-scroll" id="t-pace"></div></details>
+    </figure>
+
+    <!-- Campaign meters -->
+    <section class="card c4">
+      <div class="card-head"><div><h3>Goal progress by campaign</h3><p class="card-sub">Percent of each campaign’s target</p></div></div>
+      <div id="meters" style="margin-top:16px"></div>
+    </section>
+
+    <!-- Gift pyramid -->
+    <figure class="card c5">
+      <figcaption class="card-head">
+        <div>
+          <p class="eyebrow">Gift pyramid</p>
+          <h3>Dollars raised by gift size</h3>
+          <p class="card-sub">Ordered tiers — darker steps are larger gifts</p>
+        </div>
+      </figcaption>
+      <div class="chart-wrap"><div class="chart-scroll"><div id="c-tiers"></div></div><div class="tip" hidden></div></div>
+      <div style="display:flex;gap:28px;flex-wrap:wrap;margin-top:18px;padding-top:16px;border-top:1px solid var(--hairline)">
+        <div><p class="eyebrow">Donors</p><p style="font-size:18px;font-weight:600;margin-top:3px">4,188</p></div>
+        <div><p class="eyebrow">Top 46 gifts</p><p style="font-size:18px;font-weight:600;margin-top:3px">58% of dollars</p></div>
+        <div><p class="eyebrow">Median gift</p><p style="font-size:18px;font-weight:600;margin-top:3px">$95</p></div>
+      </div>
+      <p style="font-size:11.5px;color:var(--text-muted);margin-top:12px">Forty-six donors at $10,000 and above carry more than half the campaign — the single biggest concentration risk in the plan.</p>
+      <details class="tv"><summary>Table view</summary><div class="tv-scroll" id="t-tiers"></div></details>
+    </figure>
+
+    <!-- Channel mix -->
+    <figure class="card c7">
+      <figcaption class="card-head">
+        <div>
+          <p class="eyebrow">Channel mix</p>
+          <h3>Revenue by fundraising channel</h3>
+          <p class="card-sub">Thousands of dollars per fiscal quarter · Q4 to date</p>
+        </div>
+      </figcaption>
+      <div class="legend" id="lg-chan"></div>
+      <div class="chart-wrap"><div class="chart-scroll"><div id="c-chan"></div></div><div class="tip" hidden></div></div>
+      <details class="tv"><summary>Table view</summary><div class="tv-scroll" id="t-chan"></div></details>
+    </figure>
+
+    <!-- Cohort retention -->
+    <figure class="card c7">
+      <figcaption class="card-head">
+        <div>
+          <p class="eyebrow">Loyalty</p>
+          <h3>Donor retention by acquisition cohort</h3>
+          <p class="card-sub">Percent of each cohort still giving, by year since first gift</p>
+        </div>
+      </figcaption>
+      <div class="chart-wrap heat"><div class="chart-scroll"><div id="c-cohort"></div></div><div class="tip" hidden></div></div>
+      <div class="scale" id="heat-scale"></div>
+      <details class="tv"><summary>Table view</summary><div class="tv-scroll" id="t-cohort"></div></details>
+    </figure>
+
+    <!-- Stewardship -->
+    <section class="card c5">
+      <div class="card-head"><div><h3>Stewardship queue</h3><p class="card-sub">Acknowledgement and follow-up service levels</p></div></div>
+      <div id="queue" style="margin-top:12px"></div>
+    </section>
+
+    <!-- Major gift pipeline -->
+    <section class="card c12">
+      <div class="card-head"><div><h3>Major gift pipeline</h3><p class="card-sub">Eight active solicitations over $25,000 · weighted value $1.62M</p></div></div>
+      <div class="tv-scroll" style="margin-top:12px" id="pipeline"></div>
+    </section>
+
+  </div>
+
+  <footer class="foot">
+    <span>Mock data for demonstration — no real donor records are represented here.</span>
+    <span>Kami Foundation · Advancement Console</span>
+  </footer>
+</div>
+
+<script>
+(() => {
+"use strict";
+const NS = "http://www.w3.org/2000/svg";
+const mk = (n, a = {}) => { const e = document.createElementNS(NS, n); for (const k in a) e.setAttribute(k, a[k]); return e; };
+const tok = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const $ = s => document.querySelector(s);
+const renderers = [];
+const reg = fn => { renderers.push(fn); fn(); };
+const redraw = () => renderers.forEach(f => f());
+const usd = v => "$" + v.toLocaleString("en-US");
+const m2 = v => "$" + v.toFixed(2) + "M";
+
+function placeTip(tip, svg, xu, yu, W, H, pad) {
+  const wrap = tip.parentElement.getBoundingClientRect(), r = svg.getBoundingClientRect();
+  const top = (r.top - wrap.top) + (yu / H) * r.height;
+  tip.style.left = Math.max(pad, Math.min(wrap.width - pad, (r.left - wrap.left) + (xu / W) * r.width)) + "px";
+  flipTip(tip, top, top + 18);   /* never let the tooltip ride up over the card heading */
+}
+function flipTip(tip, above, below) {
+  const fits = above - tip.offsetHeight >= 0;
+  tip.classList.toggle("below", !fits);
+  tip.style.top = (fits ? above : below) + "px";
+}
+
+/* square at the baseline, 4px rounded data-end */
+function barPathV(x, y, w, h, r) {
+  r = Math.max(0, Math.min(r, h, w / 2));
+  return `M${x},${y + h} L${x},${y + r} Q${x},${y} ${x + r},${y} L${x + w - r},${y} Q${x + w},${y} ${x + w},${y + r} L${x + w},${y + h} Z`;
+}
+function barPathH(x, y, w, h, r) {
+  r = Math.max(0, Math.min(r, w, h / 2));
+  return `M${x},${y} L${x + w - r},${y} Q${x + w},${y} ${x + w},${y + r} L${x + w},${y + h - r} Q${x + w},${y + h} ${x + w - r},${y + h} L${x},${y + h} Z`;
+}
+function legend(el, items, shape) {
+  el.innerHTML = items.map(i =>
+    `<span class="legend-item"><span class="swatch${shape === "sq" ? " sq" : ""}" style="background:${i.color}"></span>${i.name}</span>`).join("");
+}
+function tableView(el, head, rows) {
+  el.innerHTML = `<table><thead><tr>${head.map(h => `<th scope="col">${h}</th>`).join("")}</tr></thead>`
+    + `<tbody>${rows.map(r => `<tr><th scope="row" style="font-weight:500;color:var(--text-primary)">${r[0]}</th>`
+      + `${r.slice(1).map(c => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+}
+
+/* ── Line chart with crosshair tooltip ─────────────────────────────── */
+function lineChart(cfg) {
+  const mount = $(cfg.el), tip = mount.closest(".chart-wrap").querySelector(".tip");
+  reg(() => {
+    mount.innerHTML = "";
+    const W = 780, H = 300, P = { l: 48, r: 60, t: 16, b: 34 };
+    const n = cfg.labels.length, iw = W - P.l - P.r, ih = H - P.t - P.b;
+    const step = iw / (n - 1);
+    const x = i => P.l + i * step, y = v => P.t + (1 - v / cfg.yMax) * ih;
+    const svg = mk("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": cfg.aria });
+    svg.style.minWidth = Math.round(W * 0.78) + "px";   /* legibility floor — scroll rather than shrink */
+
+    cfg.ticks.forEach(t => {
+      const ty = y(t);
+      svg.appendChild(mk("line", { x1: P.l, x2: W - P.r, y1: ty, y2: ty, stroke: t === 0 ? tok("--axis") : tok("--grid"), "stroke-width": 1 }));
+      const lb = mk("text", { x: P.l - 10, y: ty + 4, "text-anchor": "end", fill: tok("--text-muted"), "font-size": 11, style: "font-variant-numeric:tabular-nums" });
+      lb.textContent = "$" + t + "M";
+      svg.appendChild(lb);
+    });
+    cfg.labels.forEach((l, i) => {
+      const t = mk("text", { x: x(i), y: H - P.b + 20, "text-anchor": "middle", fill: tok("--text-muted"), "font-size": 11 });
+      t.textContent = l;
+      svg.appendChild(t);
+    });
+
+    const colors = cfg.series.map(s => tok(s.color));
+    cfg.series.forEach((s, si) => {
+      if (s.area) {
+        const d = s.values.map((v, i) => `${i ? "L" : "M"}${x(i)},${y(v)}`).join(" ") + ` L${x(n - 1)},${y(0)} L${x(0)},${y(0)} Z`;
+        svg.appendChild(mk("path", { d, fill: colors[si], "fill-opacity": .10 }));
+      }
+      svg.appendChild(mk("path", {
+        d: s.values.map((v, i) => `${i ? "L" : "M"}${x(i)},${y(v)}`).join(" "),
+        fill: "none", stroke: colors[si], "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round"
+      }));
+      const lx = x(n - 1), ly = y(s.values[n - 1]);
+      svg.appendChild(mk("circle", { cx: lx, cy: ly, r: 4.5, fill: colors[si], stroke: tok("--surface-1"), "stroke-width": 2 }));
+      const lb = mk("text", { x: lx + 10, y: ly + (si ? 14 : -2), fill: tok("--text-secondary"), "font-size": 11.5, "font-weight": 600 });
+      lb.textContent = m2(s.values[n - 1]);
+      svg.appendChild(lb);
+    });
+
+    const cross = mk("line", { y1: P.t, y2: H - P.b, stroke: tok("--axis"), "stroke-width": 1, visibility: "hidden" });
+    svg.appendChild(cross);
+    const pts = cfg.series.map((s, si) => {
+      const c = mk("circle", { r: 4.5, fill: colors[si], stroke: tok("--surface-1"), "stroke-width": 2, visibility: "hidden" });
+      svg.appendChild(c);
+      return c;
+    });
+    const hit = mk("rect", {
+      class: "hit", x: P.l - step / 2, y: P.t, width: iw + step, height: ih, fill: "transparent",
+      tabindex: 0, role: "application", "aria-label": cfg.aria + ". Use the arrow keys to step through months."
+    });
+    svg.appendChild(hit);
+
+    let idx = -1;
+    const show = i => {
+      idx = i;
+      cross.setAttribute("x1", x(i)); cross.setAttribute("x2", x(i)); cross.setAttribute("visibility", "visible");
+      pts.forEach((p, si) => { p.setAttribute("cx", x(i)); p.setAttribute("cy", y(cfg.series[si].values[i])); p.setAttribute("visibility", "visible"); });
+      const gap = cfg.series[0].values[i] - cfg.series[1].values[i];
+      tip.hidden = false;
+      tip.innerHTML = `<div class="tt">${cfg.full[i]}</div>` + cfg.series.map((s, si) =>
+        `<div class="tr"><span class="n"><span class="swatch" style="background:${colors[si]}"></span>${s.name}</span><span class="val">${m2(s.values[i])}</span></div>`).join("")
+        + `<div class="tr" style="border-top:1px solid var(--hairline);margin-top:6px;padding-top:5px"><span class="n">Variance</span><span class="val">${(gap >= 0 ? "+" : "−") + "$" + Math.abs(Math.round(gap * 1000)).toLocaleString("en-US") + "K"}</span></div>`;
+      placeTip(tip, svg, x(i), P.t + 4, W, H, 86);
+    };
+    const hide = () => { tip.hidden = true; cross.setAttribute("visibility", "hidden"); pts.forEach(p => p.setAttribute("visibility", "hidden")); };
+    hit.addEventListener("mousemove", e => {
+      const r = svg.getBoundingClientRect();
+      show(Math.max(0, Math.min(n - 1, Math.round(((e.clientX - r.left) / r.width * W - P.l) / step))));
+    });
+    hit.addEventListener("mouseleave", hide);
+    hit.addEventListener("blur", hide);
+    hit.addEventListener("focus", () => show(idx < 0 ? n - 1 : idx));
+    hit.addEventListener("keydown", e => {
+      if (e.key === "ArrowRight") { show(Math.min(n - 1, idx + 1)); e.preventDefault(); }
+      if (e.key === "ArrowLeft")  { show(Math.max(0, idx - 1)); e.preventDefault(); }
+      if (e.key === "Escape") hide();
+    });
+    mount.appendChild(svg);
+  });
+}
+
+/* ── Horizontal ordinal bars ───────────────────────────────────────── */
+function hBarChart(cfg) {
+  const mount = $(cfg.el), tip = mount.closest(".chart-wrap").querySelector(".tip");
+  reg(() => {
+    mount.innerHTML = "";
+    const n = cfg.rows.length, rowH = 46, bh = 22;
+    const W = 560, P = { l: 118, r: 62, t: 10, b: 32 };
+    const H = P.t + n * rowH + P.b;
+    const iw = W - P.l - P.r;
+    const x = v => P.l + (v / cfg.xMax) * iw;
+    const svg = mk("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": cfg.aria });
+    svg.style.minWidth = Math.round(W * 0.78) + "px";   /* legibility floor — scroll rather than shrink */
+
+    cfg.ticks.forEach(t => {
+      svg.appendChild(mk("line", { x1: x(t), x2: x(t), y1: P.t, y2: H - P.b, stroke: t === 0 ? tok("--axis") : tok("--grid"), "stroke-width": 1 }));
+      const lb = mk("text", { x: x(t), y: H - P.b + 20, "text-anchor": "middle", fill: tok("--text-muted"), "font-size": 11, style: "font-variant-numeric:tabular-nums" });
+      lb.textContent = "$" + t + "K";
+      svg.appendChild(lb);
+    });
+
+    cfg.rows.forEach((r, i) => {
+      const y = P.t + i * rowH + (rowH - bh) / 2;
+      const c = tok(r.color);
+      const g = mk("g", { class: "hit", tabindex: 0, role: "img", "aria-label": `${r.label}: $${r.value}K from ${r.donors.toLocaleString("en-US")} donors` });
+      g.appendChild(mk("path", { d: barPathH(P.l, y, Math.max(2, x(r.value) - P.l), bh, 4), fill: c }));
+      const on = () => {
+        tip.hidden = false;
+        tip.innerHTML = `<div class="tt">${r.label}</div>`
+          + `<div class="tr"><span class="n"><span class="swatch sq" style="background:${c}"></span>Raised</span><span class="val">$${r.value}K</span></div>`
+          + `<div class="tr"><span class="n">Donors</span><span class="val">${r.donors.toLocaleString("en-US")}</span></div>`
+          + `<div class="tr"><span class="n">Average gift</span><span class="val">${usd(Math.round(r.value * 1000 / r.donors))}</span></div>`;
+        placeTip(tip, svg, x(r.value / 2), y - 6, W, H, 88);
+      };
+      g.addEventListener("mouseenter", on);
+      g.addEventListener("focus", on);
+      g.addEventListener("mouseleave", () => { tip.hidden = true; });
+      g.addEventListener("blur", () => { tip.hidden = true; });
+      svg.appendChild(g);
+
+      const lab = mk("text", { x: P.l - 12, y: y + bh / 2 + 4, "text-anchor": "end", fill: tok("--text-secondary"), "font-size": 11.5 });
+      lab.textContent = r.label;
+      svg.appendChild(lab);
+      const val = mk("text", { x: x(r.value) + 10, y: y + bh / 2 + 4, fill: tok("--text-primary"), "font-size": 11.5, "font-weight": 600 });
+      val.textContent = "$" + r.value + "K";
+      svg.appendChild(val);
+    });
+    mount.appendChild(svg);
+  });
+}
+
+/* ── Stacked columns ───────────────────────────────────────────────── */
+function stackedChart(cfg) {
+  const mount = $(cfg.el), tip = mount.closest(".chart-wrap").querySelector(".tip");
+  reg(() => {
+    mount.innerHTML = "";
+    const W = 660, H = 300, P = { l: 52, r: 14, t: 22, b: 34 };
+    const n = cfg.labels.length, iw = W - P.l - P.r, ih = H - P.t - P.b;
+    const band = iw / n, bw = Math.min(24, band * 0.36);
+    const y = v => P.t + (1 - v / cfg.yMax) * ih;
+    const svg = mk("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": cfg.aria });
+    svg.style.minWidth = Math.round(W * 0.78) + "px";   /* legibility floor — scroll rather than shrink */
+
+    cfg.ticks.forEach(t => {
+      const ty = y(t);
+      svg.appendChild(mk("line", { x1: P.l, x2: W - P.r, y1: ty, y2: ty, stroke: t === 0 ? tok("--axis") : tok("--grid"), "stroke-width": 1 }));
+      const lb = mk("text", { x: P.l - 10, y: ty + 4, "text-anchor": "end", fill: tok("--text-muted"), "font-size": 11, style: "font-variant-numeric:tabular-nums" });
+      lb.textContent = "$" + t.toLocaleString("en-US") + "K";
+      svg.appendChild(lb);
+    });
+
+    const colors = cfg.series.map(s => tok(s.color));
+    cfg.labels.forEach((lab, i) => {
+      const bx = P.l + i * band + (band - bw) / 2;
+      const total = cfg.series.reduce((a, s) => a + s.values[i], 0);
+      const top = cfg.series.reduce((t, s, k) => s.values[i] > 0 ? k : t, 0);
+      let acc = 0;
+      cfg.series.forEach((s, k) => {
+        const v = s.values[i];
+        if (v <= 0) return;
+        const yT = y(acc + v), yB = y(acc);
+        const h = (yB - yT) - (acc === 0 ? 0 : 2);   /* 2px surface gap between segments */
+        const g = mk("g", { class: "hit", tabindex: 0, role: "img", "aria-label": `${lab}, ${s.name}: $${v}K` });
+        g.appendChild(mk("path", { d: k === top ? barPathV(bx, yT, bw, h, 4) : `M${bx},${yT} h${bw} v${h} h${-bw} Z`, fill: colors[k] }));
+        const on = () => {
+          tip.hidden = false;
+          tip.innerHTML = `<div class="tt">${lab}</div>` + cfg.series.map((s2, k2) =>
+            `<div class="tr"><span class="n"><span class="swatch sq" style="background:${colors[k2]}"></span>${s2.name}</span><span class="val">$${s2.values[i]}K</span></div>`).join("")
+            + `<div class="tr" style="border-top:1px solid var(--hairline);margin-top:6px;padding-top:5px"><span class="n">Total</span><span class="val">$${total.toLocaleString("en-US")}K</span></div>`;
+          placeTip(tip, svg, bx + bw / 2, y(total) - 8, W, H, 92);
+        };
+        g.addEventListener("mouseenter", on);
+        g.addEventListener("focus", on);
+        g.addEventListener("mouseleave", () => { tip.hidden = true; });
+        g.addEventListener("blur", () => { tip.hidden = true; });
+        svg.appendChild(g);
+        acc += v;
+      });
+      const tl = mk("text", { x: bx + bw / 2, y: y(total) - 9, "text-anchor": "middle", fill: tok("--text-secondary"), "font-size": 11, "font-weight": 600 });
+      tl.textContent = "$" + total.toLocaleString("en-US") + "K";
+      svg.appendChild(tl);
+      const t = mk("text", { x: bx + bw / 2, y: H - P.b + 20, "text-anchor": "middle", fill: tok("--text-muted"), "font-size": 11 });
+      t.textContent = lab;
+      svg.appendChild(t);
+    });
+    mount.appendChild(svg);
+  });
+}
+
+/* ── Sparkline & stat tiles ────────────────────────────────────────── */
+function sparkline(host, values, accent) {
+  const W = 92, H = 30, pad = 4;
+  const min = Math.min(...values), max = Math.max(...values), span = (max - min) || 1;
+  const x = i => (i / (values.length - 1)) * (W - 8) + 4;
+  const y = v => H - pad - ((v - min) / span) * (H - pad * 2);
+  const svg = mk("svg", { class: "spark", viewBox: `0 0 ${W} ${H}`, "aria-hidden": "true", focusable: "false" });
+  svg.appendChild(mk("path", {
+    d: values.map((v, i) => `${i ? "L" : "M"}${x(i)},${y(v)}`).join(" "),
+    fill: "none", stroke: tok("--ramp-250"), "stroke-width": 2, "stroke-linecap": "round", "stroke-linejoin": "round"
+  }));
+  svg.appendChild(mk("circle", { cx: x(values.length - 1), cy: y(values[values.length - 1]), r: 4, fill: tok(accent), stroke: tok("--surface-1"), "stroke-width": 2 }));
+  host.appendChild(svg);
+}
+function statTile(sel, t) {
+  const el = $(sel);
+  reg(() => {
+    el.innerHTML = `<p class="eyebrow">${t.eyebrow}</p>
+      <p class="value">${t.value}</p>
+      <div class="foot"><p class="delta ${t.dir}">${t.dir === "flat" ? ""
+        : `<svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true"><path d="${t.dir === "up" ? "M6 1 11 8H1z" : "M6 11 1 4h10z"}"/></svg>`}
+        ${t.delta} <span class="vs">${t.vs}</span></p></div>`;
+    sparkline(el.querySelector(".foot"), t.spark, t.accent || "--series-1");
+  });
+}
+
+/* ═══ Data ═════════════════════════════════════════════════════════ */
+statTile("#tile-donors", { eyebrow: "Donors", value: "4,188", dir: "up", delta: "+8.4%", vs: "vs. FY25 to date", spark: [2810,2990,3180,3340,3520,3690,3810,3930,4020,4090,4140,4188] });
+statTile("#tile-avg",    { eyebrow: "Average gift", value: "$678", dir: "up", delta: "+12.1%", vs: "vs. FY25 to date", spark: [605,598,612,624,619,631,640,648,655,662,671,678] });
+statTile("#tile-ret",    { eyebrow: "Donor retention", value: "68.2%", dir: "down", delta: "−1.4 pt", vs: "vs. FY25 — first-year lapse", accent: "--series-2", spark: [69.6,69.8,69.4,69.1,69.3,68.9,68.7,68.8,68.5,68.4,68.3,68.2] });
+statTile("#tile-rec",    { eyebrow: "Recurring giving", value: "$412K", dir: "up", delta: "+21.3%", vs: "annualised, vs. FY25", spark: [312,322,331,340,352,361,370,381,390,398,405,412] });
+
+const months  = ["Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May"];
+const mFull   = ["July 2025", "August 2025", "September 2025", "October 2025", "November 2025", "December 2025", "January 2026", "February 2026", "March 2026", "April 2026", "May 2026"];
+const raised  = [0.18, 0.36, 0.55, 0.79, 1.12, 1.74, 1.96, 2.18, 2.44, 2.61, 2.84];
+const plan    = [0.20, 0.38, 0.58, 0.82, 1.15, 1.70, 1.92, 2.12, 2.36, 2.56, 2.76];
+
+legend($("#lg-pace"), [{ name: "Raised to date", color: tok("--series-1") }, { name: "Seasonal plan", color: tok("--series-2") }]);
+lineChart({
+  el: "#c-pace", labels: months, full: mFull, yMax: 4, ticks: [0, 1, 2, 3, 4],
+  aria: "Cumulative dollars raised versus the seasonal plan, fiscal year to date, in millions of dollars",
+  series: [
+    { name: "Raised to date", color: "--series-1", values: raised, area: true },
+    { name: "Seasonal plan",  color: "--series-2", values: plan }
+  ]
+});
+tableView($("#t-pace"), ["Month", "Raised", "Plan", "Variance"],
+  months.map((m, i) => [m, m2(raised[i]), m2(plan[i]),
+    (raised[i] - plan[i] >= 0 ? "+" : "−") + "$" + Math.abs(Math.round((raised[i] - plan[i]) * 1000)).toLocaleString("en-US") + "K"]));
+
+const tiers = [
+  { label: "$1 – $99",          value: 86,  donors: 2940, color: "--ord-1" },
+  { label: "$100 – $999",       value: 412, donors: 1018, color: "--ord-2" },
+  { label: "$1,000 – $9,999",   value: 690, donors: 184,  color: "--ord-3" },
+  { label: "$10,000 – $49,999", value: 852, donors: 38,   color: "--ord-4" },
+  { label: "$50,000 and above", value: 800, donors: 8,    color: "--ord-5" }
+];
+hBarChart({
+  el: "#c-tiers", rows: tiers, xMax: 900, ticks: [0, 300, 600, 900],
+  aria: "Dollars raised by gift size tier, in thousands of dollars"
+});
+tableView($("#t-tiers"), ["Gift size", "Raised", "Donors", "Average gift", "Share of total"],
+  tiers.map(t => [t.label, "$" + t.value + "K", t.donors.toLocaleString("en-US"),
+    usd(Math.round(t.value * 1000 / t.donors)), (t.value / 28.4).toFixed(1) + "%"]));
+
+const quarters = ["Q1 · Jul–Sep", "Q2 · Oct–Dec", "Q3 · Jan–Mar", "Q4 · Apr–May"];
+const channels = [
+  { name: "Major gifts", color: "--series-1", values: [180, 520, 240, 300] },
+  { name: "Direct mail", color: "--series-2", values: [120, 310, 95, 100] },
+  { name: "Events",      color: "--series-3", values: [140, 60, 210, 110] },
+  { name: "Digital",     color: "--series-4", values: [95, 180, 110, 70] }
+];
+legend($("#lg-chan"), channels.map(s => ({ name: s.name, color: tok(s.color) })), "sq");
+stackedChart({
+  el: "#c-chan", labels: quarters, series: channels, yMax: 1200, ticks: [0, 300, 600, 900, 1200],
+  aria: "Revenue by fundraising channel per fiscal quarter, in thousands of dollars"
+});
+tableView($("#t-chan"), ["Quarter", ...channels.map(c => c.name), "Total"],
+  quarters.map((q, i) => [q, ...channels.map(c => "$" + c.values[i] + "K"),
+    "$" + channels.reduce((a, c) => a + c.values[i], 0).toLocaleString("en-US") + "K"]));
+
+/* ── Cohort retention heatmap (sequential, one hue, value in every cell) ── */
+const cohortCols = ["Year 2", "Year 3", "Year 4", "Year 5", "Year 6"];
+const cohorts = [
+  { name: "FY21 cohort", size: 1140, v: [42, 61, 70, 74, 76] },
+  { name: "FY22 cohort", size: 1265, v: [39, 58, 68, 71] },
+  { name: "FY23 cohort", size: 1390, v: [44, 63, 72] },
+  { name: "FY24 cohort", size: 1502, v: [47, 66] },
+  { name: "FY25 cohort", size: 1688, v: [51] }
+];
+const binOf = v => v < 40 ? 1 : v < 50 ? 2 : v < 60 ? 3 : v < 70 ? 4 : 5;
+reg(() => {
+  const tip = $("#c-cohort").closest(".chart-wrap").querySelector(".tip");
+  $("#c-cohort").innerHTML = `<table>
+    <thead><tr><th></th>${cohortCols.map(c => `<th scope="col" style="font-size:11px;color:var(--text-muted);font-weight:600">${c}</th>`).join("")}</tr></thead>
+    <tbody>${cohorts.map((c, ri) => `<tr><th scope="row">${c.name}</th>${cohortCols.map((_, ci) => {
+      const v = c.v[ci];
+      if (v == null) return `<td><div class="cell empty">—</div></td>`;
+      const b = binOf(v);
+      return `<td><div class="cell" tabindex="0" data-r="${ri}" data-c="${ci}" style="background:var(--heat-${b});color:var(--ink-${b})">${v}%</div></td>`;
+    }).join("")}</tr>`).join("")}</tbody></table>`;
+
+  $("#heat-scale").innerHTML = `<span>Lower retention</span><span class="steps">`
+    + [1, 2, 3, 4, 5].map(b => `<i style="background:var(--heat-${b})"></i>`).join("")
+    + `</span><span>Higher</span><span style="margin-left:6px">· under 40% · 40–49 · 50–59 · 60–69 · 70%+</span>`;
+
+  $("#c-cohort").querySelectorAll(".cell[tabindex]").forEach(cell => {
+    const c = cohorts[+cell.dataset.r], ci = +cell.dataset.c, v = c.v[ci];
+    const on = () => {
+      tip.hidden = false;
+      tip.innerHTML = `<div class="tt">${c.name} · ${cohortCols[ci]}</div>`
+        + `<div class="tr"><span class="n">Still giving</span><span class="val">${v}%</span></div>`
+        + `<div class="tr"><span class="n">Donors retained</span><span class="val">${Math.round(c.size * v / 100).toLocaleString("en-US")}</span></div>`
+        + `<div class="tr"><span class="n">Cohort size</span><span class="val">${c.size.toLocaleString("en-US")}</span></div>`;
+      const host = tip.parentElement.getBoundingClientRect(), r = cell.getBoundingClientRect();
+      tip.style.left = Math.max(92, Math.min(host.width - 92, r.left - host.left + r.width / 2)) + "px";
+      flipTip(tip, r.top - host.top - 6, r.bottom - host.top + 6);
+    };
+    cell.addEventListener("mouseenter", on);
+    cell.addEventListener("focus", on);
+    cell.addEventListener("mouseleave", () => { tip.hidden = true; });
+    cell.addEventListener("blur", () => { tip.hidden = true; });
+  });
+});
+tableView($("#t-cohort"), ["Cohort", "Size", ...cohortCols],
+  cohorts.map(c => [c.name, c.size.toLocaleString("en-US"), ...cohortCols.map((_, i) => c.v[i] == null ? "—" : c.v[i] + "%")]));
+
+/* Campaign meters */
+reg(() => {
+  const data = [
+    { name: "Annual Fund", v: 71, note: "$2.84M of $4.00M" },
+    { name: "Scholarship Fund", v: 88, note: "$1.06M of $1.20M" },
+    { name: "Capital Campaign", v: 34, note: "$4.10M of $12.0M" },
+    { name: "Board match", v: 100, note: "$500K of $500K — met" }
+  ];
+  $("#meters").innerHTML = data.map(d => `
+    <div class="meter">
+      <div class="meter-top"><span class="meter-name">${d.name}</span><span class="meter-val">${d.v}%</span></div>
+      <div class="track"><div class="fill" style="width:${d.v}%"></div></div>
+      <div class="meter-foot"><span>${d.note}</span></div>
+    </div>`).join("");
+});
+
+/* Stewardship queue */
+const ICON = {
+  good:    '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 8.5 3.2 3.2L13 5"/></svg>',
+  warning: '<svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.6 15 14H1z"/><path d="M7.2 6h1.6v4H7.2zM7.2 11h1.6v1.6H7.2z" fill="var(--surface-1)"/></svg>',
+  critical:'<svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M5.2 1h5.6L15 5.2v5.6L10.8 15H5.2L1 10.8V5.2z"/><path d="M7.2 4h1.6v5H7.2zM7.2 10.4h1.6V12H7.2z" fill="var(--surface-1)"/></svg>'
+};
+const chip = (lvl, label) => `<span class="chip ${lvl}">${ICON[lvl]}${label}</span>`;
+reg(() => {
+  const rows = [
+    { task: "Thank-you letters awaiting mail merge", n: 184, age: "within 48 h", lvl: "good", st: "On target" },
+    { task: "Gifts over $10,000 without a steward call", n: 6, age: "oldest 9 days", lvl: "warning", st: "Overdue" },
+    { task: "Recurring gifts with an expiring card", n: 23, age: "lapse in 30 days", lvl: "critical", st: "Act now" },
+    { task: "First-time donors not yet welcomed", n: 97, age: "oldest 5 days", lvl: "good", st: "On target" }
+  ];
+  $("#queue").innerHTML = rows.map(r => `
+    <div style="display:flex;gap:14px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--hairline-soft)">
+      <div style="font-size:19px;font-weight:600;min-width:46px">${r.n}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px">${r.task}</div>
+        <div style="font-size:11.5px;color:var(--text-muted);margin-top:2px">${r.age}</div>
+      </div>
+      <div>${chip(r.lvl, r.st)}</div>
+    </div>`).join("")
+    + `<div style="display:flex;gap:30px;flex-wrap:wrap;margin-top:18px;padding-top:16px;border-top:1px solid var(--hairline)">
+        ${[["Median ack. time", "1.8 days"], ["Service standard", "2 days"], ["Calls logged this week", "64"]]
+          .map(([k, v]) => `<div><p class="eyebrow">${k}</p><p style="font-size:17px;font-weight:600;margin-top:3px">${v}</p></div>`).join("")}
+       </div>
+       <p style="font-size:11.5px;color:var(--text-muted);margin-top:14px">Gifts over $10,000 miss the 48-hour call standard most often in December. Two officers are on leave through 24 October.</p>`;
+});
+
+/* Major gift pipeline */
+reg(() => {
+  const rows = [
+    ["Rosewood Family Trust", "$400,000", "Verbal commitment", 90, "A. Okonkwo", "28 Oct"],
+    ["Halvorsen Foundation", "$250,000", "Proposal submitted", 65, "A. Okonkwo", "12 Nov"],
+    ["Mendoza Charitable Fund", "$180,000", "Proposal submitted", 60, "R. Bell", "19 Nov"],
+    ["Dr. P. Anand", "$150,000", "Solicitation", 45, "R. Bell", "3 Dec"],
+    ["Linden Partners LLP", "$125,000", "Cultivation", 30, "J. Whitfield", "15 Dec"],
+    ["The Arbor Collective", "$95,000", "Cultivation", 25, "J. Whitfield", "8 Jan"],
+    ["K. &amp; M. Søndergaard", "$60,000", "Qualification", 15, "A. Okonkwo", "22 Jan"],
+    ["Pinewood Community Fund", "$45,000", "Qualification", 15, "R. Bell", "5 Feb"]
+  ];
+  $("#pipeline").innerHTML = `<table>
+    <thead><tr><th scope="col">Prospect</th><th scope="col">Ask</th><th scope="col" style="text-align:left">Stage</th><th scope="col">Likelihood</th><th scope="col" style="text-align:left">Officer</th><th scope="col">Next step</th></tr></thead>
+    <tbody>${rows.map(r => `<tr>
+      <th scope="row" style="font-weight:600;color:var(--text-primary)">${r[0]}</th>
+      <td>${r[1]}</td>
+      <td style="text-align:left"><span class="badge"><i></i>${r[2]}</span></td>
+      <td>${r[3]}%</td>
+      <td style="text-align:left;color:var(--text-secondary)">${r[4]}</td>
+      <td>${r[5]}</td></tr>`).join("")}</tbody>
+    <tfoot><tr><th scope="row" style="font-weight:600">Weighted total</th><td colspan="5" style="text-align:left;color:var(--text-secondary);padding-top:10px">$1,305,000 across 8 solicitations · $1.62M including pledges in payment</td></tr></tfoot>
+  </table>`;
+});
+
+/* Theme */
+const toggle = $("#themeToggle");
+const sysDark = window.matchMedia("(prefers-color-scheme: dark)");
+const isDark = () => document.documentElement.dataset.theme ? document.documentElement.dataset.theme === "dark" : sysDark.matches;
+const syncLabel = () => { toggle.textContent = isDark() ? "Light mode" : "Dark mode"; };
+toggle.addEventListener("click", () => {
+  document.documentElement.dataset.theme = isDark() ? "light" : "dark";
+  syncLabel();
+  redraw();
+});
+sysDark.addEventListener("change", () => { syncLabel(); redraw(); });
+syncLabel();
+
+/* The filter row is mock-only — keep its pressed state honest */
+document.querySelectorAll(".segmented").forEach(g => g.addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  g.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+}));
+})();
+</script>
+</body>
+</html>
